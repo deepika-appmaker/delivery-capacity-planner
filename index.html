@@ -4,11 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Delivery Capacity Planner</title>
+
 <style>
-  html, body { margin:0; padding:0; background:#EEF0F3; }
-  body { padding:32px 16px; min-height:100vh; }
-  #dcp-wrap { max-width:1040px; margin:0 auto; }
+  html, body { margin: 0; padding: 0; background: #EDEEF2; }
+  body { display: flex; justify-content: center; padding: 28px 16px; }
+  #dcp-wrap { width: 100%; max-width: 1180px; }
 </style>
+
 </head>
 <body>
 <div id="dcp-wrap">
@@ -35,7 +37,7 @@
     gap: 16px; padding: 20px 28px; background: rgba(255,255,255,0.92); backdrop-filter: blur(6px);
     border-bottom: 1px solid var(--border); border-radius: 20px 20px 0 0;
   }
-  #dcp .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+  #dcp .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
   #dcp .pad { padding: 20px 22px; }
   #dcp .section { margin-bottom: 20px; }
   #dcp .section-title { font-size: 12.5px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 14px; }
@@ -125,6 +127,10 @@
   #dcp .snapshot-kpis { display:flex; gap: 28px; margin: 14px 0; }
   #dcp .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
   #dcp .callout { border-radius: var(--radius-sm); padding: 13px 15px; border: 1px solid var(--border); background: var(--bg); }
+  #dcp .table-scroll { overflow-x: auto; margin-bottom: 20px; -webkit-overflow-scrolling: touch; }
+  #dcp .table-scroll table { margin-bottom: 0; min-width: 920px; }
+  #dcp .table-scroll::-webkit-scrollbar { height: 8px; }
+  #dcp .table-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
 </style>
 
 <div id="dcp">
@@ -144,37 +150,30 @@
       <div class="subtle">Everything on this page, including timelines, assumes sales handover, Data Clarity documentation and other required brand inputs are provided completely and on time. Delays or gaps in these upstream inputs are not modeled here and will affect actual delivery timelines.</div>
     </div>
 
-    <div class="section card pad">
-      <div class="section-title" id="scenario-title" style="margin-bottom:10px;">Planning scenario</div>
-      <div class="tab-bar" id="scenario-tabs">
-        <button class="tab-btn scenario-btn" data-scenario="best" type="button">Best case</button>
-        <button class="tab-btn scenario-btn active" data-scenario="average" type="button">Average case</button>
-        <button class="tab-btn scenario-btn" data-scenario="worst" type="button">Worst case</button>
+    <div class="section grid cols-main">
+      <div class="card pad">
+        <div class="section-title" id="scenario-title" style="margin-bottom:10px;">Planning scenario</div>
+        <div class="tab-bar" id="scenario-tabs">
+          <button class="tab-btn scenario-btn" data-scenario="best" type="button">Best case</button>
+          <button class="tab-btn scenario-btn active" data-scenario="average" type="button">Average case</button>
+          <button class="tab-btn scenario-btn" data-scenario="worst" type="button">Worst case</button>
+        </div>
+        <div class="subtle" id="scenario-desc"></div>
       </div>
-      <div class="subtle" id="scenario-desc"></div>
+      <div class="card pad">
+        <div class="section-title" style="margin-bottom:4px;">Team overview</div>
+        <div id="team-overview"></div>
+      </div>
     </div>
 
-    <div class="section">
-      <details class="dropdown card pad">
-        <summary id="team-overview-title">Team overview<span class="chevron">&#9660;</span></summary>
-        <div id="team-overview" class="stack" style="margin-top:14px;"></div>
-      </details>
+    <div class="section grid cols-main">
+      <div class="card pad" id="incoming-projects-card">
+        <div class="section-title" style="margin-bottom:4px;">Incoming projects</div>
+        <div class="subtle" id="incoming-projects-context" style="margin-bottom:14px;"></div>
+        <div class="grid grid-3" id="project-inputs"></div>
+      </div>
+      <div class="card pad snapshot-card" id="snapshot"></div>
     </div>
-
-    <div class="section card pad" id="incoming-projects-card">
-      <div class="section-title" style="margin-bottom:4px;">Incoming projects</div>
-      <div class="subtle" id="incoming-projects-context" style="margin-bottom:14px;"></div>
-      <div class="grid grid-3" id="project-inputs"></div>
-    </div>
-
-    <div class="section">
-      <details class="dropdown card pad">
-        <summary id="config-title">Configuration<span class="chevron">&#9660;</span></summary>
-        <div id="config-body" style="margin-top:14px;"></div>
-      </details>
-    </div>
-
-    <div class="section card pad snapshot-card" id="snapshot"></div>
 
     <div class="section card" style="padding: 4px 0;">
       <div style="padding:18px 20px 6px;">
@@ -184,6 +183,13 @@
         <thead><tr id="req-head"></tr></thead>
         <tbody id="req-body"></tbody>
       </table>
+    </div>
+
+    <div class="section">
+      <details class="dropdown card pad">
+        <summary id="config-title">Configuration<span class="chevron">&#9660;</span></summary>
+        <div id="config-body" style="margin-top:14px;"></div>
+      </details>
     </div>
 
     <div class="section card pad">
@@ -199,16 +205,11 @@
     <div class="section card pad">
       <div class="section-title">Reference &amp; settings</div>
       <div class="tab-bar" id="ref-tabs">
-        <button class="tab-btn active" data-tab="hierarchy" type="button">Team hierarchy</button>
-        <button class="tab-btn" data-tab="responsibilities" type="button">Responsibilities</button>
+        <button class="tab-btn active" data-tab="responsibilities" type="button">Responsibilities</button>
         <button class="tab-btn" data-tab="calc" type="button">Calculation Methodology</button>
       </div>
-      <div class="tab-panel" data-panel="hierarchy">
-        <div class="subtle" style="font-weight:600; margin-bottom:2px;">Reporting structure<span id="hierarchy-info"></span></div>
-        <div class="hierarchy" id="hierarchy"></div>
-      </div>
-      <div class="tab-panel" data-panel="responsibilities" style="display:none;">
-        <div class="subtle" style="margin-bottom:14px;">What each person owns, and what counts toward the capacity numbers above.</div>
+      <div class="tab-panel" data-panel="responsibilities">
+        <div class="subtle" style="margin-bottom:14px;">What each person owns, and what counts toward the capacity numbers above. For the reporting structure diagram, see Team overview at the top of the page.</div>
         <div id="responsibilities"></div>
       </div>
       <div class="tab-panel" data-panel="calc" style="display:none;">
@@ -382,7 +383,6 @@ function info(tip){
   return '<span class="info"><button type="button" class="info-icon" aria-label="Show details" aria-expanded="false">i</button><span class="info-tip">'+tip+'</span></span>';
 }
 
-var HIERARCHY_INFO = 'The Delivery Manager role is distinct from the Project Manager function performed by the APM. As Associate Project Manager, the APM manages execution of individual projects and reports to the Delivery Manager, who is responsible for portfolio oversight and client/executive relationships.';
 var EXCLUDED_INFO = 'Excluded from these numbers because they are ongoing overhead rather than per-project work: team wiki maintenance, Developer/QA score tracking, delivery governance and process improvement, resource/capacity-planning meetings, ad-hoc escalations, and Ops writing Data Clarity docs (only happens occasionally, as backup). These are assumed to be absorbed by the usable-capacity % buffer in Configuration, not billed to individual projects.';
 
 var PROJECT_INFO = {
@@ -558,21 +558,6 @@ function renderTeamOverview(){
         node('var(--red)', 'QA', state.team.qa) +
         node('var(--amber)', 'Operations', state.team.shefin) +
       '</div>' +
-    '</div>';
-}
-
-function renderHierarchy(){
-  var infoEl = document.getElementById('hierarchy-info');
-  if (infoEl) infoEl.innerHTML = info(HIERARCHY_INFO);
-  document.getElementById('hierarchy').innerHTML =
-    '<div class="h-node">Project Delivery Manager</div>' +
-    '<div class="h-arrow">&#8595;</div>' +
-    '<div class="h-node">Associate Project Manager</div>' +
-    '<div class="h-arrow">&#8595;</div>' +
-    '<div class="h-row">' +
-      '<div class="h-node">Developers</div>' +
-      '<div class="h-node">QA</div>' +
-      '<div class="h-node">Operations</div>' +
     '</div>';
 }
 
@@ -874,7 +859,8 @@ function renderConfig(){
     '<div class="subtle" style="margin-bottom:10px; font-weight:600;">Capacity assumptions'+info('Controls how "available capacity" is calculated: headcount &times; working days/week &times; planning window (weeks) &times; usable capacity %. "Near-capacity at %" is also the healthy/amber threshold; over capacity starts at 100%.')+'</div>' + capacityHtml +
     '<div class="subtle" style="margin-bottom:10px; font-weight:600;">Complexity multipliers'+info('Each project\'s complexity multiplies its effort for every role. Standard = 1.0 is the baseline; Simple reduces effort, Complex and Very Complex increase it.')+'</div>' + multHtml +
     '<div class="subtle" style="margin-bottom:10px; font-weight:600;">Effort per project (days)'+info('The base effort (before the complexity multiplier) that one project of this type needs from each role. The Developer column is reference only &mdash; a project either ties up one dedicated developer (any value above 0) or needs none (0). "PM client comm" is the total client-communication workload for the project, split between the APM and Delivery Manager using the percentage above.')+'</div>' +
-    '<table style="margin-bottom:20px;"><thead><tr>' +
+    '<div class="subtle" style="margin-bottom:10px; font-size:12px;">Scroll sideways to see all columns &rarr;</div>' +
+    '<div class="table-scroll"><table><thead><tr>' +
       '<th>Project type</th>' +
       '<th>Ops setup'+info('Days Ops spends on dashboard, theme, homepage and integration setup for one project of this type. Happens immediately at project start.')+'</th>' +
       '<th>Ops QA handoff'+info('Days Ops spends preparing/triggering the build and assigning it to QA. For P1 / Default this happens right after setup. For Web Parity and Custom App it happens later, once the Developer\'s build is ready &mdash; after a multi-week gap in which Ops has no scheduled involvement in this project.')+'</th>' +
@@ -888,7 +874,7 @@ function renderConfig(){
       '<th>PM client comm'+info('Total client-communication work for one project of this type: status updates, meetings, follow-ups, UAT scheduling. Split between the APM and Delivery Manager using the ownership percentage in Configuration (mostly Delivery Manager by default).')+'</th>' +
       '<th>DM own'+info('The Delivery Manager\'s own baseline involvement in one project of this type: portfolio oversight, executive communication and escalation handling, before any transfer from the APM.')+'</th>' +
     '</tr></thead>' +
-    '<tbody>' + effortRows + '</tbody></table>' +
+    '<tbody>' + effortRows + '</tbody></table></div>' +
     '<div class="subtle" style="margin-bottom:20px; font-size:12px; font-weight:600;">What\'s not counted per project'+info(EXCLUDED_INFO)+'</div>' +
     '<div class="subtle" style="margin-bottom:10px; font-weight:600;">Delegation matrix (reference)'+info('General reference for who covers an activity when the primary owner is unavailable. The modeled client-communication overflow transfer (APM to Delivery Manager, described in Calculation Methodology) is a separate, workload-driven mechanism and is not the same as the backup relationships shown here.')+'</div>' +
     '<table><thead><tr><th>Activity</th><th>Primary owner</th><th>Backup owner</th></tr></thead><tbody>' + delegationRows + '</tbody></table>';
@@ -956,7 +942,6 @@ function initTabs(){
 
 function update(){
   renderTeamOverview();
-  renderHierarchy();
   renderCalcMethodology();
   var result = compute();
   var roles = result.roles;
@@ -970,8 +955,6 @@ function update(){
 function init(){
   var scenarioTitle = document.getElementById('scenario-title');
   if (scenarioTitle) scenarioTitle.innerHTML = 'Planning scenario' + info('Switches between three independent incoming-project pipelines &mdash; Best, Average and Worst case. Each has its own project counts, editable in Incoming projects below. No load factor or scaling is applied &mdash; only the project counts differ.');
-  var teamTitle = document.getElementById('team-overview-title');
-  if (teamTitle) teamTitle.innerHTML = '<span>Team overview</span><span class="chevron">&#9660;</span>';
   renderResponsibilities();
   renderProjectInputs();
   renderConfig();
