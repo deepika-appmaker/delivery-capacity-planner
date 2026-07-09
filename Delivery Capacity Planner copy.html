@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delivery Capacity Planner</title>
+<style>
+  html, body { margin:0; padding:0; background:#EEF0F3; }
+  body { padding:32px 16px; min-height:100vh; }
+  #dcp-wrap { max-width:1040px; margin:0 auto; }
+</style>
+</head>
+<body>
+<div id="dcp-wrap">
+<style>
+  #dcp * { box-sizing: border-box; }
+  #dcp {
+    --bg: #F6F7FA; --surface: #FFFFFF; --border: #E7E9EF; --border-strong:#D7DAE3;
+    --text-1: #14161A; --text-2: #62676F; --text-3: #9AA0AA;
+    --accent: #4F46E5; --accent-bg: #EEF0FF; --accent-text:#4338CA;
+    --green: #157F3E; --green-bg:#E9F8EF; --green-border:#BFE9D0;
+    --amber: #B5570A; --amber-bg:#FEF2E3; --amber-border:#F8D9A8;
+    --red: #C0271F; --red-bg:#FDECEB; --red-border:#F7C7C3;
+    --purple: #6D28D9; --purple-bg:#F2ECFE;
+    --radius: 16px; --radius-sm: 10px;
+    --shadow: 0 1px 2px rgba(20,22,26,0.04), 0 4px 14px rgba(20,22,26,0.05);
+    --shadow-sm: 0 1px 2px rgba(20,22,26,0.05);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+    color: var(--text-1); background: var(--bg); padding: 0; border-radius: 20px; line-height: 1.45;
+  }
+  #dcp h1,#dcp h2,#dcp h3,#dcp h4 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
+  #dcp .dcp-body { padding: 26px 28px 32px; }
+  #dcp .dcp-header {
+    position: sticky; top: 0; z-index: 30; display:flex; align-items:flex-start; justify-content:space-between;
+    gap: 16px; padding: 20px 28px; background: rgba(255,255,255,0.92); backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--border); border-radius: 20px 20px 0 0;
+  }
+  #dcp .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+  #dcp .pad { padding: 20px 22px; }
+  #dcp .section { margin-bottom: 20px; }
+  #dcp .section-title { font-size: 12.5px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 14px; }
+  #dcp .grid { display: grid; gap: 14px; }
+  #dcp .grid-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  #dcp .grid-4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
+  #dcp .grid-5 { grid-template-columns: repeat(5, minmax(0,1fr)); }
+  #dcp .grid-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  #dcp .cols-main { grid-template-columns: 1.15fr 0.85fr; align-items: stretch; }
+  #dcp .stack { display: flex; flex-direction: column; gap: 12px; }
+  @media (max-width: 760px) {
+    #dcp .grid-3, #dcp .grid-4, #dcp .grid-5, #dcp .cols-main { grid-template-columns: 1fr; }
+    #dcp .grid-2 { grid-template-columns: 1fr; }
+  }
+  #dcp .hierarchy { display:flex; flex-direction:column; align-items:center; padding: 12px 0 4px; }
+  #dcp .h-node { display:inline-flex; align-items:center; gap:6px; background: var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:9px 18px; font-size:13px; font-weight:600; box-shadow: var(--shadow-sm); }
+  #dcp .h-arrow { color: var(--text-3); font-size:15px; margin: 6px 0; }
+  #dcp .h-row { display:flex; gap:14px; flex-wrap: wrap; justify-content:center; }
+  #dcp label { font-size: 12.5px; color: var(--text-2); display:block; margin-bottom: 5px; font-weight: 500; }
+  #dcp input[type=number], #dcp select {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 8px;
+    font-size: 14px; color: var(--text-1); background: var(--surface); font-family: inherit; transition: border-color .12s ease;
+  }
+  #dcp input[type=number]:hover, #dcp select:hover { border-color: var(--text-3); }
+  #dcp input[type=number]:focus, #dcp select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+  #dcp table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  #dcp th { text-align: left; font-size: 11.5px; color: var(--text-2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; padding: 11px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  #dcp td { padding: 13px 16px; border-bottom: 1px solid var(--border); }
+  #dcp tbody tr:last-child td { border-bottom: none; }
+  #dcp tbody tr:hover td { background: var(--bg); }
+  #dcp .pill { display:inline-flex; align-items:center; gap:6px; padding: 4px 11px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid transparent; white-space: nowrap; }
+  #dcp .pill-dot { width:6px; height:6px; border-radius:50%; flex: none; }
+  #dcp .pill-green { background: var(--green-bg); color: var(--green); border-color: var(--green-border); }
+  #dcp .pill-amber { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-border); }
+  #dcp .pill-red { background: var(--red-bg); color: var(--red); border-color: var(--red-border); }
+  #dcp .barwrap { background: #EBEDF2; border-radius: 999px; height: 8px; overflow: hidden; position:relative; width: 100%; }
+  #dcp .barfill { height: 100%; border-radius: 999px; transition: width .2s ease; }
+  #dcp .bar-cell { display:flex; align-items:center; gap:10px; min-width: 130px; }
+  #dcp .bar-cell .barwrap { width: 84px; }
+  #dcp .tab-bar { display:flex; gap: 4px; margin-bottom: 18px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  #dcp .tab-btn {
+    appearance:none; background:none; border:none; cursor:pointer; padding: 9px 4px; margin-right: 20px;
+    font-size: 13.5px; font-weight: 600; color: var(--text-2); border-bottom: 2px solid transparent; font-family: inherit;
+  }
+  #dcp .tab-btn:hover { color: var(--text-1); }
+  #dcp .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  #dcp .subtle { color: var(--text-2); font-size: 13px; }
+  #dcp .num { font-variant-numeric: tabular-nums; }
+  #dcp .kpi-value { font-size: 21px; font-weight: 700; letter-spacing: -0.01em; }
+  #dcp .kpi-label { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+  #dcp .badge-icon { width: 38px; height: 38px; border-radius: 11px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; flex: none; }
+  #dcp .team-card { padding:15px; display:flex; align-items:center; gap:12px; transition: box-shadow .15s ease, transform .15s ease; }
+  #dcp .team-card:hover { box-shadow: 0 2px 10px rgba(20,22,26,0.07); transform: translateY(-1px); }
+  #dcp .info { position: relative; display: inline-flex; vertical-align: middle; margin-left: 6px; }
+  #dcp .info-icon {
+    width: 15px; height: 15px; border-radius: 50%; background: #E9EBF0; color: #6B7280;
+    font-size: 10px; font-weight: 700; font-style: normal; display:flex; align-items:center; justify-content:center;
+    cursor: help; line-height:1; user-select: none;
+  }
+  #dcp .info-tip {
+    display: none; position: fixed; top: 0; left: 0;
+    background: #14161A; color: #fff; font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: normal;
+    padding: 9px 11px; border-radius: 8px; width: 220px; max-width: min(220px, calc(100vw - 24px)); line-height: 1.45;
+    z-index: 500; pointer-events: none; text-align: left;
+  }
+  #dcp .info-tip.show { display: block; }
+  #dcp .info-tip::after {
+    content: ''; position: absolute; top: 100%; left: var(--arrow-left, 50%); transform: translateX(-50%);
+    border: 5px solid transparent; border-top-color: #14161A;
+  }
+  #dcp .info-tip.tip-below::after {
+    top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: #14161A;
+  }
+  #dcp th .info-tip { font-weight: 400; text-transform: none; letter-spacing: normal; }
+  #dcp .resp-list { list-style: none; margin: 0 0 14px; padding: 0; }
+  #dcp .resp-list li { position: relative; padding: 3px 0 3px 24px; font-size: 13px; color: var(--text-1); line-height: 1.5; }
+  #dcp .resp-list.counted li::before { content: '\2713'; position: absolute; left: 0; color: var(--green); font-weight: 700; }
+  #dcp .resp-list.excluded li { color: var(--text-2); }
+  #dcp .resp-list.excluded li::before { content: '\2013'; position: absolute; left: 4px; color: var(--text-3); font-weight: 700; }
+  #dcp .resp-card { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 15px 17px; margin-bottom: 12px; }
+  #dcp .calc-block { margin-bottom: 18px; }
+  #dcp .calc-block h4 { font-size: 13px; font-weight: 600; margin: 0 0 6px; color: var(--text-1); }
+  #dcp .calc-block p { font-size: 13px; color: var(--text-2); line-height: 1.6; margin: 0 0 6px; }
+  #dcp .formula { display: inline-block; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--text-1); margin: 2px 0; }
+  #dcp .snapshot-card { display:flex; flex-direction:column; }
+  #dcp .snapshot-kpis { display:flex; gap: 28px; margin: 14px 0; }
+  #dcp .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+  #dcp .callout { border-radius: var(--radius-sm); padding: 13px 15px; border: 1px solid var(--border); background: var(--bg); }
+</style>
+
+<div id="dcp">
+
+  <div class="dcp-header">
+    <div>
+      <h1 style="font-size:22px;">Delivery Capacity Planner</h1>
+      <p class="subtle" style="margin-top:4px;">Understand whether the current delivery team can support incoming projects.</p>
+    </div>
+    <span class="pill pill-green" style="white-space:nowrap;"><span class="pill-dot" style="background:var(--green);"></span>Live &mdash; updates instantly</span>
+  </div>
+
+  <div class="dcp-body">
+
+    <div class="section">
+      <div class="section-title" id="team-overview-title">Team overview</div>
+      <div id="team-overview" class="grid grid-5"></div>
+    </div>
+
+    <div class="section grid cols-main">
+      <div class="card pad">
+        <div class="section-title" style="margin-bottom:14px;">Incoming projects</div>
+        <div class="grid grid-3" id="project-inputs"></div>
+      </div>
+      <div class="card pad snapshot-card" id="snapshot"></div>
+    </div>
+
+    <div class="section card" style="padding: 4px 0;">
+      <div style="padding:18px 20px 6px;">
+        <div class="section-title" style="margin-bottom:0;">Team requirement</div>
+      </div>
+      <table>
+        <thead><tr id="req-head"></tr></thead>
+        <tbody id="req-body"></tbody>
+      </table>
+    </div>
+
+    <div class="section grid cols-main" style="grid-template-columns: 1fr 1fr;">
+      <div class="card pad">
+        <div class="section-title" id="bottleneck-title">Bottleneck</div>
+        <div class="stack" id="bottleneck-cards"></div>
+      </div>
+      <div class="card pad">
+        <div class="section-title" id="delegation-title">Client communication capacity</div>
+        <div id="delegation"></div>
+      </div>
+    </div>
+
+    <div class="section card pad">
+      <div class="section-title" id="recommendation-title">Recommendation</div>
+      <div id="recommendation"></div>
+    </div>
+
+    <div class="section card pad">
+      <div class="section-title">Reference &amp; settings</div>
+      <div class="tab-bar" id="ref-tabs">
+        <button class="tab-btn active" data-tab="hierarchy" type="button">Team hierarchy</button>
+        <button class="tab-btn" data-tab="responsibilities" type="button">Responsibilities</button>
+        <button class="tab-btn" data-tab="calc" type="button">Calculation Methodology</button>
+        <button class="tab-btn" data-tab="config" type="button">Configuration</button>
+      </div>
+      <div class="tab-panel" data-panel="hierarchy">
+        <div class="subtle" style="font-weight:600; margin-bottom:2px;">Reporting structure<span id="hierarchy-info"></span></div>
+        <div class="hierarchy" id="hierarchy"></div>
+      </div>
+      <div class="tab-panel" data-panel="responsibilities" style="display:none;">
+        <div class="subtle" style="margin-bottom:14px;">What each person owns, and what counts toward the capacity numbers above.</div>
+        <div id="responsibilities"></div>
+      </div>
+      <div class="tab-panel" data-panel="calc" style="display:none;">
+        <div class="subtle" style="margin-bottom:14px;">Details how required days, available days and every downstream figure are calculated.</div>
+        <div id="calc-methodology"></div>
+      </div>
+      <div class="tab-panel" data-panel="config" style="display:none;">
+        <div id="config-body"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+
+var state = {
+  team: { roy: 1, deepika: 1, shefin: 1, developers: 6, qa: 2 },
+  workingDaysPerWeek: 5,
+  planningWindowWeeks: 4,
+  planningCapacityPct: 85,
+  healthyThreshold: 80,
+  overloadThreshold: 100,
+  clientCommDeepikaPct: 15,
+  projects: {
+    p1: { count: 1, complexity: 'Standard' },
+    web: { count: 2, complexity: 'Standard' },
+    custom: { count: 1, complexity: 'Standard' }
+  },
+  effort: {
+    p1:     { label: 'P1 / Default', shefinSetup: 3, shefinQaHandoff: 0.5, shefinSanity: 1, shefinPublish: 1, qa: 2,   qaTestCasePrep: 0,   dev: 0,    pmCore: 0.4, pmClientComm: 0.1, royBase: 0.2 },
+    web:    { label: 'Web Parity',   shefinSetup: 3, shefinQaHandoff: 0.5, shefinSanity: 0, shefinPublish: 1, qa: 5,   qaTestCasePrep: 2.5, dev: 15,   pmCore: 3.5, pmClientComm: 1.5, royBase: 1.5 },
+    custom: { label: 'Custom App',   shefinSetup: 3, shefinQaHandoff: 0.5, shefinSanity: 0, shefinPublish: 1, qa: 10,  qaTestCasePrep: 2.5, dev: 22.5, pmCore: 5.5, pmClientComm: 2.5, royBase: 2.5 }
+  },
+  multipliers: { Simple: 0.8, Standard: 1.0, Complex: 1.3, 'Very Complex': 1.6 }
+};
+
+var PTYPES = ['p1','web','custom'];
+var ROLES = ['deepika','roy','shefin','developers','qa'];
+var ROLE_LABEL = { deepika: 'Deepika (APM)', roy: 'Roy (Delivery Mgr)', shefin: 'Shefin (Ops)', developers: 'Developers', qa: 'QA' };
+var DELEGATION_MATRIX = [
+  { activity: 'Data Clarity', primary: 'Deepika', backup: 'None' },
+  { activity: 'Requirement analysis', primary: 'Deepika', backup: 'None' },
+  { activity: 'Development coordination', primary: 'Deepika', backup: 'None' },
+  { activity: 'QA review', primary: 'Deepika', backup: 'None' },
+  { activity: 'Technical discussions', primary: 'Deepika', backup: 'None' },
+  { activity: 'Client communication', primary: 'Deepika', backup: 'Roy' },
+  { activity: 'Client status updates', primary: 'Deepika', backup: 'Roy' },
+  { activity: 'Weekly client meetings', primary: 'Deepika', backup: 'Roy' },
+  { activity: 'Escalation calls', primary: 'Roy', backup: 'Deepika' },
+  { activity: 'Executive communication', primary: 'Roy', backup: 'None' },
+  { activity: 'Portfolio oversight', primary: 'Roy', backup: 'None' }
+];
+
+var ROLE_RESPONSIBILITIES = [
+  {
+    key: 'roy', name: 'Roy', title: 'Project Delivery Manager',
+    counted: [
+      'Manage client communication and stakeholder relationships',
+      'Conduct client status meetings and delivery reviews',
+      'Manage stakeholder expectations',
+      'Communicate project timelines and delivery updates',
+      'Coordinate Brand UAT communication',
+      'Own the overall delivery portfolio (background oversight)',
+      'Oversee the health of all active projects (background oversight)'
+    ],
+    excluded: [
+      'Handle delivery escalations &mdash; occasional, not every project',
+      'Support resource and capacity planning &mdash; organizational, not project-specific',
+      'Assist Project Managers during high workload &mdash; this is the automatic client-comm transfer itself, not a separate time cost',
+      'Drive delivery governance and process improvements &mdash; organizational overhead',
+      'Ensure smooth and timely delivery across multiple projects &mdash; the overarching goal, not a discrete task'
+    ]
+  },
+  {
+    key: 'deepika', name: 'Deepika', title: 'Associate Project Manager',
+    counted: [
+      'Receive project handovers',
+      'Create Data Clarity documents',
+      'Gather and analyze project requirements',
+      'Conduct integration and feature evaluations',
+      'Define the Source of Truth for each project',
+      'Conduct requirement clarification sessions',
+      'Coordinate Developers, QA and Operations throughout the project lifecycle',
+      'Track project progress, timelines and milestones',
+      'Identify and resolve internal blockers',
+      'Monitor day-to-day project execution',
+      'Review QA findings and assign issues to Developers',
+      'Perform final sanity testing before Brand UAT (Web Parity &amp; Custom App only)',
+      'Coordinate with clients and Roy for functional clarifications (small share)',
+      'Coordinate Brand UAT with the client and Roy (small share)'
+    ],
+    excluded: [
+      'Maintain the Team Wiki &mdash; ongoing overhead, not tied to a specific project',
+      'Track Developer Score and QA Score &mdash; periodic review, not project-specific',
+      'Ensure projects are delivered on schedule in collaboration with Roy &mdash; the overarching goal, not a discrete task'
+    ]
+  },
+  {
+    key: 'shefin', name: 'Shefin', title: 'Operations Manager',
+    counted: [
+      'Install and configure themes',
+      'Configure the application dashboard',
+      'Build homepage layouts for all project types',
+      'Configure plug-and-play integrations',
+      'Support homepage, dashboard and operational setup for Web Parity and Custom projects',
+      'Prepare and trigger builds for QA, and assign builds to QA',
+      'Perform sanity testing for P1 / Default',
+      'Manage production publishing after Brand approval',
+      'Support release activities',
+      'Handle operational configurations and environment setup'
+    ],
+    excluded: [
+      'Support QA evaluation and contribute to QA Score tracking &mdash; periodic review, not project-specific',
+      'Create Data Clarity documents when required &mdash; occasional backup for Deepika, not standard per-project work'
+    ],
+    note: 'Modeled as phase-based touchpoints rather than continuous occupancy. For P1 / Default, setup, QA handoff, sanity testing and publishing occur consecutively with minimal idle time in between. For Web Parity and Custom App, Shefin completes setup at the start of the project, then has no scheduled involvement while Developers complete the build over several weeks, returning only for the QA handoff and the final publish. Additional P1 / Default work can be assigned to Shefin during this period without creating a scheduling conflict.'
+  },
+  {
+    key: 'developers', name: 'Developers', title: 'Delivery team',
+    counted: [
+      'Evaluate features requested by brands',
+      'Develop application features',
+      'Implement UI based on project requirements',
+      'Integrate APIs and third-party services',
+      'Build custom functionality',
+      'Resolve bugs reported by QA',
+      'Address issues identified during Brand UAT',
+      'Deliver production-ready builds that meet quality standards'
+    ],
+    excluded: [],
+    note: 'This is reflected in a single measure: a dedicated developer remains assigned to a project for its full duration (Web Parity, Custom App), covering the build, bug-fix and UAT-fix cycles. For this reason, Developers are counted as headcount rather than days &mdash; see Calculation Methodology.'
+  },
+  {
+    key: 'qa', name: 'QA Engineers', title: 'Quality assurance',
+    counted: [
+      'Analyze project requirements before testing',
+      'Prepare custom test cases for Web Parity and Custom App projects',
+      'Review acceptance criteria and expected functionality',
+      'Perform comprehensive QA and Golden Flow testing',
+      'Validate application behavior across supported devices',
+      'Test integrations and custom implementations',
+      'Report defects with clear reproduction steps',
+      'Verify bug fixes and perform retesting',
+      'Validate builds before Brand UAT',
+      'Ensure release quality before publishing'
+    ],
+    excluded: []
+  }
+];
+
+function round1(n){ return Math.round(n*10)/10; }
+function fmt(n){ return String(round1(n)); }
+
+function info(tip){
+  return '<span class="info" tabindex="0"><span class="info-icon" aria-label="What this means">i</span><span class="info-tip">'+tip+'</span></span>';
+}
+
+var TEAM_INFO = {
+  roy: 'Project Delivery Manager and Deepika\'s reporting manager. Responsible for most client and executive communication by default, along with portfolio oversight and escalations. When Deepika\'s workload exceeds available capacity, additional client-communication responsibilities may be reassigned to Roy; Deepika\'s core project-execution responsibilities are not reassigned.',
+  deepika: 'Available capacity = headcount &times; working days/week &times; planning window &times; usable capacity %. As Associate Project Manager, Deepika is responsible for handovers, Data Clarity, requirement analysis, Source of Truth, coordinating Developers/QA/Ops, progress tracking, unblocking, QA review and bug assignment, and final sanity testing before Brand UAT on Web Parity and Custom App &mdash; none of this is reassigned to Roy. Deepika retains a smaller default share of client communication (the remainder is assigned to Roy), which may be reduced further if her workload exceeds available capacity.',
+  shefin: 'Available capacity = headcount &times; working days/week &times; planning window &times; usable capacity %. Shefin\'s work is phase-based rather than continuous: setup of theme/dashboard/homepage/integrations happens up front, followed by a QA handoff, final sanity testing (for P1 / Default only), and publishing after Brand approval. On Web Parity and Custom App there is a multi-week gap between setup and the QA handoff while Developers build; during that period, Shefin\'s capacity is available for other P1 / Default work.',
+  developers: 'Counted as headcount, not days. Each project that needs development (Web Parity, Custom App) ties up exactly one dedicated developer for its duration &mdash; including feature evaluation, build, bug fixes and Brand UAT fixes. P1 / Default needs none.',
+  qa: 'Available capacity = headcount &times; working days/week &times; planning window &times; usable capacity %. QA handles requirement review, functional/regression/Golden Flow testing, defect reporting and retesting before Brand UAT, plus test-case writing for Web Parity and Custom App (in parallel with development, but still using QA capacity).'
+};
+
+var HIERARCHY_INFO = 'Roy holds the Project Delivery Manager role, which is distinct from the Project Manager function performed by Deepika. As Associate Project Manager, Deepika manages execution of individual projects and reports to Roy, who is responsible for portfolio oversight and client/executive relationships.';
+var DELEGATION_INFO = 'Client communication (status meetings, updates, follow-ups, UAT scheduling) is assigned primarily to Roy by default; Deepika retains a smaller share (the split can be adjusted in Configuration). If Deepika\'s workload continues to exceed available capacity after this default split, an additional portion of the remaining client-communication share is automatically reassigned to Roy. Deepika\'s core execution work (Data Clarity, requirement analysis, coordination, QA review, sanity testing) is never reassigned.';
+var EXCLUDED_INFO = 'Excluded from these numbers because they are ongoing overhead rather than per-project work: team wiki maintenance, Developer/QA score tracking, delivery governance and process improvement, resource/capacity-planning meetings, ad-hoc escalations, and Shefin writing Data Clarity docs (only happens occasionally, as backup). These are assumed to be absorbed by the usable-capacity % buffer in Configuration, not billed to individual projects.';
+
+var PROJECT_INFO = {
+  p1: 'P1 / Default &middot; ~1 week. Template-based setup, no developer needed. Ops is engaged continuously and immediately: 3 days setup, 0.5 day QA handoff, then later 1 day sanity testing and 1 day publish. QA: 2 days.',
+  web: 'Web Parity &middot; ~4 weeks. Ops completes homepage/dashboard/integration setup in the first ~3 days, then is free while the Developer builds (~3 weeks) &mdash; only re-engaging for a 0.5 day QA handoff once the build is ready, and 1 day to publish after Brand approval. QA: ~1 week testing plus ~2&ndash;3 days writing test cases in parallel with development. Deepika coordinates throughout and does final sanity testing before Brand UAT (not Ops).',
+  custom: 'Custom App &middot; ~6 weeks. Ops completes setup in the first ~3 days, then is free while the Developer builds (~4&ndash;5 weeks) &mdash; only re-engaging for a 0.5 day QA handoff once the build is ready, and 1 day to publish after Brand approval. QA: ~1&ndash;2 weeks testing plus ~2&ndash;3 days writing test cases in parallel with development. Heavier Deepika involvement throughout, including final sanity testing before Brand UAT (not Ops).'
+};
+var COMPLEXITY_INFO = 'Complexity multiplies the effort every role needs on that project (see Configuration to edit the multipliers). It does not change how many developers a project needs.';
+
+var REQ_HEAD_INFO = {
+  role: 'Developers are tracked as headcount. Deepika, Roy, Shefin and QA are tracked in days of effort. Deepika and Roy already reflect any client-communication transfer between them (see Client communication capacity below).',
+  required: 'Total workload from the projects you have entered: project count &times; complexity multiplier &times; effort per project, summed across all project types.',
+  available: 'How much capacity this role has in the current planning window (see Configuration for the assumptions behind this number).',
+  gap: 'Required minus available. Only shown when required exceeds available.',
+  util: 'Required &divide; available, as a percentage. The bar is capped visually at 100% width, but the number shows the true percentage even past that.',
+  status: 'Green = healthy (below the near-capacity threshold). Amber = near capacity. Red = over capacity (required exceeds available).'
+};
+
+var BOTTLENECK_INFO = 'The role with the highest utilization percentage is the primary bottleneck; the next highest is the secondary bottleneck. These are recalculated every time an input changes.';
+var RECOMMENDATION_INFO = 'Determined by the utilization of the most-loaded role. Utilization below the near-capacity threshold results in a Deliverable status; up to the overload threshold results in a Deliverable with limited headroom status; above the overload threshold results in a Not deliverable within current capacity status, along with recommended options.';
+
+function getPath(obj, path){ return path.split('.').reduce(function(o,k){ return o[k]; }, obj); }
+function setPath(obj, path, value){
+  var parts = path.split('.'); var o = obj;
+  for (var i=0;i<parts.length-1;i++){ o = o[parts[i]]; }
+  o[parts[parts.length-1]] = value;
+}
+window.dcpSetConfig = function(el){
+  var path = el.dataset.path;
+  var val = el.type === 'number' ? (parseFloat(el.value) || 0) : el.value;
+  setPath(state, path, val);
+  update();
+};
+
+function availableDays(headcount){
+  return headcount * state.workingDaysPerWeek * state.planningWindowWeeks * (state.planningCapacityPct/100);
+}
+
+function compute(){
+  var mult = state.multipliers;
+  var req = { deepika:0, roy:0, shefin:0, developers:0, qa:0 };
+  var contrib = { deepika:{}, roy:{}, shefin:{}, developers:{}, qa:{} };
+  var deepikaSharePct = Math.max(0, Math.min(100, state.clientCommDeepikaPct)) / 100;
+  var royShareFromSplitTotal = 0;
+  var pmClientCommTotal = 0;
+
+  PTYPES.forEach(function(pt){
+    var p = state.projects[pt];
+    var e = state.effort[pt];
+    var m = mult[p.complexity] != null ? mult[p.complexity] : 1;
+    var count = p.count || 0;
+
+    var pmCoreDays = count * m * e.pmCore;
+    var pmClientCommDaysTotal = count * m * e.pmClientComm;
+    var deepikaClientCommDays = pmClientCommDaysTotal * deepikaSharePct;
+    var royClientCommDays = pmClientCommDaysTotal - deepikaClientCommDays;
+    var royBaseDays = count * m * e.royBase;
+    var shefinDays = count * m * (e.shefinSetup + (e.shefinQaHandoff || 0) + (e.shefinSanity || 0) + e.shefinPublish);
+    var qaDays = count * m * (e.qa + (e.qaTestCasePrep || 0));
+    var devHeadcount = e.dev > 0 ? count : 0;
+
+    req.deepika += pmCoreDays + deepikaClientCommDays;
+    req.roy += royBaseDays + royClientCommDays;
+    req.shefin += shefinDays;
+    req.qa += qaDays;
+    req.developers += devHeadcount;
+    pmClientCommTotal += deepikaClientCommDays;
+    royShareFromSplitTotal += royClientCommDays;
+
+    contrib.deepika[pt] = pmCoreDays + deepikaClientCommDays;
+    contrib.roy[pt] = royBaseDays + royClientCommDays;
+    contrib.shefin[pt] = shefinDays;
+    contrib.qa[pt] = qaDays;
+    contrib.developers[pt] = devHeadcount;
+  });
+
+  var avail = {
+    deepika: availableDays(state.team.deepika),
+    roy: availableDays(state.team.roy),
+    shefin: availableDays(state.team.shefin),
+    qa: availableDays(state.team.qa),
+    developers: state.team.developers
+  };
+
+  var deepikaRequiredPre = req.deepika;
+  var royRequiredPre = req.roy;
+  var deepikaGapPre = Math.max(0, deepikaRequiredPre - avail.deepika);
+  var roySparePre = Math.max(0, avail.roy - royRequiredPre);
+  var transferAmount = deepikaGapPre > 0 ? Math.min(deepikaGapPre, pmClientCommTotal, roySparePre) : 0;
+
+  req.deepika = deepikaRequiredPre - transferAmount;
+  req.roy = royRequiredPre + transferAmount;
+
+  var delegation = {
+    deepikaRequiredPre: deepikaRequiredPre,
+    royRequiredPre: royRequiredPre,
+    deepikaAvail: avail.deepika,
+    royAvail: avail.roy,
+    pmClientCommTotal: pmClientCommTotal,
+    roySparePre: roySparePre,
+    transferAmount: transferAmount,
+    deepikaRequiredPost: req.deepika,
+    royRequiredPost: req.roy,
+    deepikaSharePct: deepikaSharePct * 100,
+    royShareFromSplit: royShareFromSplitTotal,
+    deepikaShareFromSplit: pmClientCommTotal
+  };
+
+  var roles = {};
+  ROLES.forEach(function(r){
+    var required = req[r];
+    var available = avail[r];
+    var gap = Math.max(0, required - available);
+    var pct = available > 0 ? (required/available*100) : (required > 0 ? 999 : 0);
+    var status = pct > state.overloadThreshold ? 'red' : (pct >= state.healthyThreshold ? 'amber' : 'green');
+    roles[r] = { required: required, available: available, gap: gap, pct: pct, status: status, contrib: contrib[r] };
+  });
+
+  return { roles: roles, delegation: delegation };
+}
+
+function statusLabel(s){ return s === 'red' ? 'Over capacity' : (s === 'amber' ? 'Near capacity' : 'Healthy'); }
+function statusColor(s){ return s === 'red' ? 'var(--red)' : (s === 'amber' ? 'var(--amber)' : 'var(--green)'); }
+function pillClass(s){ return s === 'red' ? 'pill-red' : (s === 'amber' ? 'pill-amber' : 'pill-green'); }
+function unitLabel(role, val){ return role === 'developers' ? (fmt(val) + (val===1?' developer':' developers')) : (fmt(val) + ' days'); }
+
+function classifyOverall(maxPct){
+  if (maxPct < state.healthyThreshold) return { tag: 'green', label: 'Deliverable' };
+  if (maxPct <= state.overloadThreshold) return { tag: 'amber', label: 'Deliverable with limited headroom' };
+  return { tag: 'red', label: 'Not deliverable within current capacity' };
+}
+
+function renderTeamOverview(){
+  var cards = [
+    { key:'roy', icon:'R', color:'var(--purple)', bg:'var(--purple-bg)', name:'Roy', role:'Delivery Manager', count: state.team.roy },
+    { key:'deepika', icon:'D', color:'var(--accent)', bg:'var(--accent-bg)', name:'Deepika', role:'Associate Project Manager', count: state.team.deepika },
+    { key:'shefin', icon:'S', color:'var(--amber)', bg:'var(--amber-bg)', name:'Shefin', role:'Operations Manager', count: state.team.shefin },
+    { key:'developers', icon:'DV', color:'var(--green)', bg:'var(--green-bg)', name:'Developers', role:'Delivery team', count: state.team.developers },
+    { key:'qa', icon:'QA', color:'var(--red)', bg:'var(--red-bg)', name:'QA', role:'Quality assurance', count: state.team.qa }
+  ];
+  document.getElementById('team-overview').innerHTML = cards.map(function(c){
+    return '<div class="card team-card">' +
+      '<div class="badge-icon" style="background:'+c.bg+'; color:'+c.color+';">'+c.icon+'</div>' +
+      '<div><div class="kpi-value">'+c.count+'</div><div class="kpi-label">'+c.name+' &middot; '+c.role+info(TEAM_INFO[c.key])+'</div></div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderHierarchy(){
+  var infoEl = document.getElementById('hierarchy-info');
+  if (infoEl) infoEl.innerHTML = info(HIERARCHY_INFO);
+  document.getElementById('hierarchy').innerHTML =
+    '<div class="h-node">Roy &middot; Project Delivery Manager</div>' +
+    '<div class="h-arrow">&#8595;</div>' +
+    '<div class="h-node">Deepika &middot; Associate Project Manager</div>' +
+    '<div class="h-arrow">&#8595;</div>' +
+    '<div class="h-row">' +
+      '<div class="h-node">Developers</div>' +
+      '<div class="h-node">QA</div>' +
+      '<div class="h-node">Shefin &middot; Operations</div>' +
+    '</div>';
+}
+
+function renderResponsibilities(){
+  document.getElementById('responsibilities').innerHTML = ROLE_RESPONSIBILITIES.map(function(r){
+    var countedHtml = r.counted.length
+      ? '<div class="subtle" style="font-weight:600; margin-bottom:6px;">Counted toward capacity</div><ul class="resp-list counted">' +
+        r.counted.map(function(item){ return '<li>'+item+'</li>'; }).join('') + '</ul>'
+      : '';
+    var excludedHtml = r.excluded.length
+      ? '<div class="subtle" style="font-weight:600; margin-bottom:6px;">Not counted (overhead / occasional)</div><ul class="resp-list excluded">' +
+        r.excluded.map(function(item){ return '<li>'+item+'</li>'; }).join('') + '</ul>'
+      : '';
+    var noteHtml = r.note ? '<div class="subtle" style="font-style:italic;">'+r.note+'</div>' : '';
+    return '<div class="resp-card">' +
+      '<div style="font-weight:700; font-size:14px; margin-bottom:10px;">'+r.name+' &middot; '+r.title+'</div>' +
+      countedHtml + excludedHtml + noteHtml +
+    '</div>';
+  }).join('');
+}
+
+function renderCalcMethodology(){
+  var wd = state.workingDaysPerWeek, pw = state.planningWindowWeeks, cap = state.planningCapacityPct;
+  var exampleAvail = fmt(availableDays(1));
+  var deepikaPct = state.clientCommDeepikaPct;
+  var html = '';
+
+  html += '<div class="calc-block"><h4>1. Available capacity (Deepika, Roy, Shefin, QA)</h4>' +
+    '<p>Every day-based role\'s available capacity uses the same formula:</p>' +
+    '<div class="formula">headcount &times; working days/week &times; planning window (weeks) &times; usable capacity %</div>' +
+    '<p>With your current Configuration ('+wd+' days/week, '+pw+'-week window, '+cap+'% usable), one person = '+exampleAvail+' available days. All four numbers are editable in Configuration.</p></div>';
+
+  html += '<div class="calc-block"><h4>2. Required days (Deepika, Roy, Shefin, QA)</h4>' +
+    '<p>For each project type, effort is looked up from the Effort per project table, multiplied by the complexity multiplier for that project, then multiplied by how many projects of that type you entered. These are summed across all four project types:</p>' +
+    '<div class="formula">required = &Sigma; (project count &times; complexity multiplier &times; effort per project)</div>' +
+    '<p>Complexity multipliers (Simple 0.8, Standard 1.0, Complex 1.3, Very Complex 1.6 by default) scale every role\'s effort on that project equally.</p></div>';
+
+  html += '<div class="calc-block"><h4>3. Developers &mdash; headcount, not days</h4>' +
+    '<p>Developers are not tracked in days. Web Parity and Custom App each need exactly one dedicated developer for the life of the project (covering build, bug fixes and Brand UAT fixes); P1 / Default needs none. So:</p>' +
+    '<div class="formula">developers required = count of Web Parity + Custom App projects</div>' +
+    '<p>Available is simply the number of developers on the team. Complexity does not change this count &mdash; a more complex project still needs one developer, just for longer.</p></div>';
+
+  html += '<div class="calc-block"><h4>4. Shefin (Ops) &mdash; phase-based touchpoints, not continuous occupancy</h4>' +
+    '<p>Shefin\'s required days are the sum of four distinct touchpoints, not a smooth allocation across the whole project timeline:</p>' +
+    '<div class="formula">shefin days = setup + QA handoff + sanity (P1 / Default only) + publish</div>' +
+    '<p>For P1 / Default, Shefin\'s involvement is continuous: setup, QA handoff, sanity testing and publishing occur consecutively over approximately one week, with minimal idle time in between.</p>' +
+    '<p>For Web Parity and Custom App, Shefin completes homepage/dashboard/integration setup in the first few days, after which Developers take over the build for the following several weeks. Shefin has no scheduled involvement during that development phase, returning only for a brief QA handoff once the build is ready and again to publish after Brand approval. Because the required-days total reflects only these touchpoint days rather than the full project duration, the capacity model correctly shows Shefin as available for additional P1 / Default work in the same planning window without registering a scheduling conflict.</p></div>';
+
+  html += '<div class="calc-block"><h4>5. Client communication split (Deepika &amp; Roy)</h4>' +
+    '<p>The "PM client comm" effort in the table is the total client-communication workload for a project. It is split '+(100-deepikaPct)+'% Roy / '+deepikaPct+'% Deepika by default (the split can be adjusted in Configuration) and added to each of their required-days totals alongside their own core work. If Deepika\'s workload continues to exceed available capacity afterward, an additional portion of the remaining share is automatically reassigned to Roy, up to whatever remains in that pool and whatever spare capacity Roy has available. See the Client Communication Capacity panel for current figures.</p></div>';
+
+  html += '<div class="calc-block"><h4>6. QA test-case writing (Web Parity &amp; Custom App)</h4>' +
+    '<p>Test-case preparation is added on top of QA testing days for these two project types, because it consumes QA capacity. It is not added to the project duration, because it happens in parallel with development.</p></div>';
+
+  html += '<div class="calc-block"><h4>7. Status, bottleneck and recommendation</h4>' +
+    '<p>Utilization % = required &divide; available for every role. Below the "Near-capacity at %" threshold, status is Healthy (green); up to 100%, status is Near capacity (amber); above 100%, status is Over capacity (red) &mdash; both thresholds are editable in Configuration. The role with the highest utilization is the primary bottleneck, and the next highest is the secondary bottleneck. The Recommendation panel is driven by the primary bottleneck\'s utilization, and the "Add capacity" / "Stagger the intake" / "Extend the timeline" options update dynamically based on the current gap.</p></div>';
+
+  document.getElementById('calc-methodology').innerHTML = html;
+}
+
+function renderProjectInputs(){
+  var complexities = Object.keys(state.multipliers);
+  document.getElementById('project-inputs').innerHTML = PTYPES.map(function(pt){
+    var p = state.projects[pt];
+    var label = state.effort[pt].label;
+    return '<div>' +
+      '<label>'+label+info(PROJECT_INFO[pt])+'</label>' +
+      '<input type="number" min="0" step="1" value="'+p.count+'" data-path="projects.'+pt+'.count" oninput="dcpSetConfig(this)" style="margin-bottom:8px;">' +
+      '<select data-path="projects.'+pt+'.complexity" onchange="dcpSetConfig(this)">' +
+        complexities.map(function(c){ return '<option value="'+c+'"'+(c===p.complexity?' selected':'')+'>'+c+'</option>'; }).join('') +
+      '</select>' +
+    '</div>';
+  }).join('');
+  document.getElementById('project-inputs').insertAdjacentHTML('beforeend',
+    '<div class="subtle" style="grid-column: 1 / -1; margin-top:4px;">Complexity'+info(COMPLEXITY_INFO)+'</div>');
+}
+
+function renderRequirementTable(roles){
+  document.getElementById('req-head').innerHTML =
+    '<th>Role'+info(REQ_HEAD_INFO.role)+'</th>' +
+    '<th>Required'+info(REQ_HEAD_INFO.required)+'</th>' +
+    '<th>Available'+info(REQ_HEAD_INFO.available)+'</th>' +
+    '<th>Gap'+info(REQ_HEAD_INFO.gap)+'</th>' +
+    '<th>Utilization'+info(REQ_HEAD_INFO.util)+'</th>' +
+    '<th>Status'+info(REQ_HEAD_INFO.status)+'</th>';
+  document.getElementById('req-body').innerHTML = ROLES.map(function(r){
+    var d = roles[r];
+    var pct = Math.max(0, d.pct);
+    var width = Math.min(100, pct);
+    return '<tr>' +
+      '<td style="font-weight:600;">'+ROLE_LABEL[r]+'</td>' +
+      '<td class="num">'+unitLabel(r, d.required)+'</td>' +
+      '<td class="num">'+unitLabel(r, d.available)+'</td>' +
+      '<td class="num">'+(d.gap > 0 ? unitLabel(r, d.gap) : '&mdash;')+'</td>' +
+      '<td><div class="bar-cell"><div class="barwrap"><div class="barfill" style="width:'+width+'%; background:'+statusColor(d.status)+';"></div></div><span class="num" style="font-size:12.5px; font-weight:600;">'+Math.round(pct)+'%</span></div></td>' +
+      '<td><span class="pill '+pillClass(d.status)+'"><span class="pill-dot" style="background:'+statusColor(d.status)+';"></span>'+statusLabel(d.status)+'</span></td>' +
+    '</tr>';
+  }).join('');
+}
+
+function reasonFor(role, d){
+  if (role === 'developers'){
+    return d.status === 'red'
+      ? ('Requires '+fmt(d.required)+' developers to cover current projects; '+fmt(d.available)+' are available.')
+      : ('Requires '+fmt(d.required)+' developers of '+fmt(d.available)+' available, with additional capacity remaining.');
+  }
+  var names = {
+    deepika: "Deepika's core execution and coordination workload (after any client-communication reassigned to Roy)",
+    roy: "Roy's portfolio, executive-communication and escalation workload (including any workload reassigned from Deepika)",
+    shefin: "Shefin's phase-based touchpoints (setup, QA handoff, sanity, publish) across current projects",
+    qa: 'QA testing and test-case-writing workload'
+  };
+  var name = names[role];
+  return d.status === 'red'
+    ? (name+' requires '+fmt(d.required)+' days, of '+fmt(d.available)+' available &mdash; a gap of '+fmt(d.gap)+' days.')
+    : (name+' requires '+fmt(d.required)+' of '+fmt(d.available)+' available days, within capacity.');
+}
+
+function renderBottleneck(roles){
+  var titleEl = document.getElementById('bottleneck-title');
+  if (titleEl) titleEl.innerHTML = 'Bottleneck' + info(BOTTLENECK_INFO);
+  var sorted = ROLES.slice().sort(function(a,b){ return roles[b].pct - roles[a].pct; });
+  var primary = sorted[0], secondary = sorted[1];
+  function card(role, tag){
+    var d = roles[role];
+    return '<div class="callout" style="border-left: 3px solid '+statusColor(d.status)+';">' +
+      '<div class="subtle" style="margin-bottom:4px; text-transform:uppercase; font-size:11px; font-weight:700; letter-spacing:0.05em;">'+tag+'</div>' +
+      '<div style="font-size:16px; font-weight:700; margin-bottom:6px;">'+ROLE_LABEL[role]+' &middot; '+Math.round(d.pct)+'%</div>' +
+      '<div class="subtle">'+reasonFor(role, d)+'</div>' +
+    '</div>';
+  }
+  document.getElementById('bottleneck-cards').innerHTML = card(primary, 'Primary bottleneck') + card(secondary, 'Secondary bottleneck');
+  return { primary: primary, secondary: secondary, sorted: sorted };
+}
+
+function biggestContributor(role, d){
+  var best = null, bestVal = -1;
+  PTYPES.forEach(function(pt){
+    var v = d.contrib[pt];
+    if (v > bestVal){ bestVal = v; best = pt; }
+  });
+  return best;
+}
+
+function renderDelegation(delegation){
+  var titleEl = document.getElementById('delegation-title');
+  if (titleEl) titleEl.innerHTML = 'Client communication capacity' + info(DELEGATION_INFO);
+  var el = document.getElementById('delegation');
+  var d = delegation;
+  var html = '';
+
+  function row(label, required, available){
+    var pct = available > 0 ? (required/available*100) : (required > 0 ? 999 : 0);
+    var status = pct > state.overloadThreshold ? 'red' : (pct >= state.healthyThreshold ? 'amber' : 'green');
+    return '<tr><td style="font-weight:600;">'+label+'</td><td class="num">'+fmt(required)+' / '+fmt(available)+' days</td>' +
+      '<td><span class="pill '+pillClass(status)+'"><span class="pill-dot" style="background:'+statusColor(status)+';"></span>'+statusLabel(status)+'</span></td></tr>';
+  }
+
+  html += '<div class="subtle" style="margin-bottom:14px;">By default, client communication is split '+fmt(100-d.deepikaSharePct)+'% Roy / '+fmt(d.deepikaSharePct)+'% Deepika (the split can be adjusted in Configuration). Roy\'s '+fmt(d.royShareFromSplit)+' day'+(fmt(d.royShareFromSplit)==='1'?'':'s')+' and Deepika\'s '+fmt(d.deepikaShareFromSplit)+' day'+(fmt(d.deepikaShareFromSplit)==='1'?'':'s')+' of client-communication work are already reflected in the requirement table above.</div>';
+
+  if (d.transferAmount <= 0 && d.deepikaRequiredPre <= d.deepikaAvail){
+    html += '<div class="subtle">Deepika\'s default client-communication share is within capacity; no further reassignment to Roy is required at this time.</div>';
+  } else {
+    html += '<table style="margin-bottom:12px;"><thead><tr><th>Role</th><th>Before reassignment</th><th>&nbsp;</th></tr></thead><tbody>' +
+      row('Deepika', d.deepikaRequiredPre, d.deepikaAvail) +
+      row('Roy', d.royRequiredPre, d.royAvail) +
+      '</tbody></table>';
+
+    if (d.transferAmount > 0){
+      html += '<div class="subtle" style="margin-bottom:12px;">&#8595; Deepika\'s workload continues to exceed capacity after the default split, so an additional '+fmt(d.transferAmount)+' day'+(fmt(d.transferAmount)==='1'?'':'s')+' of the remaining client-communication share is reassigned to Roy &#8595;</div>' +
+        '<table style="margin-bottom:12px;"><thead><tr><th>Role</th><th>After reassignment</th><th>&nbsp;</th></tr></thead><tbody>' +
+        row('Deepika', d.deepikaRequiredPost, d.deepikaAvail) +
+        row('Roy', d.royRequiredPost, d.royAvail) +
+        '</tbody></table>';
+    }
+
+    if (d.deepikaRequiredPost <= d.deepikaAvail){
+      html += '<div style="display:flex; align-items:center; gap:8px;"><span class="pill pill-green" style="font-size:12px;">&#10003;</span>' +
+        '<span class="subtle">Client communication can be redistributed to Roy; no additional Project Manager is required.</span></div>';
+    } else if (d.royRequiredPost > d.royAvail){
+      html += '<div style="display:flex; align-items:center; gap:8px;"><span class="pill pill-red" style="font-size:12px;">&#10007;</span>' +
+        '<span class="subtle">Project Management and Delivery Management capacity are both fully utilized. Consider adding Project Manager support or reducing concurrent project intake.</span></div>';
+    } else {
+      var remaining = fmt(d.deepikaRequiredPost - d.deepikaAvail);
+      html += '<div style="display:flex; align-items:center; gap:8px;"><span class="pill pill-amber" style="font-size:12px;">&#9888;</span>' +
+        '<span class="subtle">Roy has been assigned the maximum client-communication workload available for reassignment ('+fmt(d.transferAmount)+' days); Deepika\'s workload still exceeds capacity by '+remaining+' days. Consider reducing concurrent project intake or adding Project Manager support.</span></div>';
+    }
+  }
+  el.innerHTML = html;
+}
+
+function buildOptions(roles, bottleneck, maxPct){
+  var asks = [];
+  ROLES.forEach(function(r){
+    var d = roles[r];
+    if (d.status !== 'red') return;
+    if (r === 'developers'){
+      asks.push(Math.ceil(d.gap) + ' additional ' + (Math.ceil(d.gap)===1?'developer':'developers'));
+    } else {
+      var perDay = availableDays(1);
+      var extra = Math.ceil(d.gap / perDay);
+      var roleName = r === 'deepika' ? 'Project Manager' : (r === 'roy' ? 'Delivery Manager' : (r === 'shefin' ? 'Operations' : 'QA'));
+      asks.push(extra + ' additional ' + roleName + (extra===1?' team member':' team members'));
+    }
+  });
+
+  var primaryD = roles[bottleneck.primary];
+  var worstType = biggestContributor(bottleneck.primary, primaryD);
+  var worstLabel = state.effort[worstType].label;
+  var perProjectAmount = primaryD.contrib[worstType] / (state.projects[worstType].count || 1);
+  var delayCount = perProjectAmount > 0 ? Math.min(state.projects[worstType].count, Math.ceil(primaryD.gap / perProjectAmount)) : 0;
+  var extraWeeks = Math.ceil(state.planningWindowWeeks * (maxPct/100 - 1));
+
+  return { asks: asks, worstLabel: worstLabel, delayCount: delayCount, extraWeeks: extraWeeks };
+}
+
+function renderSnapshot(roles, bottleneck){
+  var maxPct = roles[bottleneck.primary].pct;
+  var overall = classifyOverall(maxPct);
+  var takeaway;
+  if (overall.tag === 'green') takeaway = 'Adequate headroom is available across the team.';
+  else if (overall.tag === 'amber') takeaway = ROLE_LABEL[bottleneck.primary] + ' is approaching capacity and should be monitored.';
+  else takeaway = ROLE_LABEL[bottleneck.primary] + ' is over capacity; see Recommendation below for options.';
+
+  var html = '<div class="subtle" style="text-transform:uppercase; font-size:11px; font-weight:700; letter-spacing:0.06em; margin-bottom:12px;">At a glance</div>' +
+    '<div><span class="pill '+pillClass(overall.tag)+'" style="font-size:13.5px; padding:6px 14px;"><span class="pill-dot" style="background:'+statusColor(overall.tag)+';"></span>'+overall.label+'</span></div>' +
+    '<div class="snapshot-kpis">' +
+      '<div><div class="kpi-value">'+Math.round(maxPct)+'%</div><div class="kpi-label">Peak utilization</div></div>' +
+      '<div><div class="kpi-value" style="font-size:16px;">'+ROLE_LABEL[bottleneck.primary]+'</div><div class="kpi-label">Primary bottleneck</div></div>' +
+    '</div>' +
+    '<hr class="divider">' +
+    '<div class="subtle">'+takeaway+'</div>';
+  document.getElementById('snapshot').innerHTML = html;
+}
+
+function renderRecommendation(roles, bottleneck){
+  var maxPct = roles[bottleneck.primary].pct;
+  var el = document.getElementById('recommendation');
+  var titleEl = document.getElementById('recommendation-title');
+  if (titleEl) titleEl.innerHTML = 'Recommendation' + info(RECOMMENDATION_INFO);
+  var overall = classifyOverall(maxPct);
+  var html = '';
+
+  if (overall.tag === 'green'){
+    html += '<div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">' +
+      '<span class="pill pill-green" style="font-size:13px;">&#10003; Deliverable</span></div>' +
+      '<div class="subtle">The current team can support this workload, with adequate headroom across all roles.</div>';
+  } else if (overall.tag === 'amber'){
+    html += '<div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">' +
+      '<span class="pill pill-amber" style="font-size:13px;">&#9888; Deliverable with limited headroom</span></div>' +
+      '<div class="subtle">Delivery is feasible; however, '+ROLE_LABEL[bottleneck.primary]+' is operating close to capacity ('+Math.round(maxPct)+'%). Timelines may be affected by any further increase in workload.</div>';
+  } else {
+    var opt = buildOptions(roles, bottleneck, maxPct);
+    html += '<div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">' +
+      '<span class="pill pill-red" style="font-size:13px;">&#10007; Not deliverable within current capacity</span></div>' +
+      '<div class="subtle" style="margin-bottom:14px;">'+ROLE_LABEL[bottleneck.primary]+' is over capacity at '+Math.round(maxPct)+'% utilization. The following options would bring workload back within capacity:</div>' +
+      '<div class="grid grid-2" style="gap:12px;">' +
+        '<div class="callout">' +
+          '<div style="font-weight:600; font-size:13px; margin-bottom:4px;">Add capacity</div>' +
+          '<div class="subtle" style="font-size:13px;">'+(opt.asks.length ? opt.asks.join(', ') : 'No additional hires required')+'</div>' +
+        '</div>' +
+        '<div class="callout">' +
+          '<div style="font-weight:600; font-size:13px; margin-bottom:4px;">Stagger the intake</div>' +
+          '<div class="subtle" style="font-size:13px;">Delay onboarding of '+opt.delayCount+' '+opt.worstLabel+' project'+(opt.delayCount===1?'':'s')+'</div>' +
+        '</div>' +
+        '<div class="callout" style="grid-column: 1 / -1;">' +
+          '<div style="font-weight:600; font-size:13px; margin-bottom:4px;">Extend the timeline</div>' +
+          '<div class="subtle" style="font-size:13px;">Extend the delivery timeline by approximately '+opt.extraWeeks+' week'+(opt.extraWeeks===1?'':'s')+' to accommodate current workload without increasing headcount</div>' +
+        '</div>' +
+      '</div>';
+  }
+  el.innerHTML = html;
+}
+
+function renderConfig(){
+  var mult = state.multipliers;
+  var complexities = Object.keys(mult);
+
+  var teamHtml = '<div class="grid grid-5" style="margin-bottom:20px;">' +
+    ['roy','deepika','shefin','developers','qa'].map(function(r){
+      return '<div><label>'+ROLE_LABEL[r]+' headcount</label><input type="number" min="0" step="1" value="'+state.team[r]+'" data-path="team.'+r+'" oninput="dcpSetConfig(this)"></div>';
+    }).join('') + '</div>';
+
+  var splitHtml = '<div class="grid grid-4" style="margin-bottom:20px;">' +
+    '<div><label>Deepika\'s share of client comm %'+info('The rest goes to Roy by default. Client communication is mostly Roy\'s job &mdash; Deepika typically keeps only a small slice (around 10&ndash;20%) tied to the projects she is actively running.')+'</label>' +
+    '<input type="number" min="0" max="100" step="1" value="'+state.clientCommDeepikaPct+'" data-path="clientCommDeepikaPct" oninput="dcpSetConfig(this)"></div>' +
+  '</div>';
+
+  var capacityHtml = '<div class="grid grid-4" style="margin-bottom:20px;">' +
+    '<div><label>Working days / week</label><input type="number" min="1" max="7" step="1" value="'+state.workingDaysPerWeek+'" data-path="workingDaysPerWeek" oninput="dcpSetConfig(this)"></div>' +
+    '<div><label>Planning window (weeks)</label><input type="number" min="1" step="1" value="'+state.planningWindowWeeks+'" data-path="planningWindowWeeks" oninput="dcpSetConfig(this)"></div>' +
+    '<div><label>Usable capacity %</label><input type="number" min="1" max="100" step="1" value="'+state.planningCapacityPct+'" data-path="planningCapacityPct" oninput="dcpSetConfig(this)"></div>' +
+    '<div><label>Near-capacity at %</label><input type="number" min="1" max="200" step="1" value="'+state.healthyThreshold+'" data-path="healthyThreshold" oninput="dcpSetConfig(this)"></div>' +
+  '</div>';
+
+  var multHtml = '<div class="grid grid-4" style="margin-bottom:20px;">' +
+    complexities.map(function(c){
+      return '<div><label>'+c+' multiplier</label><input type="number" min="0.1" step="0.1" value="'+mult[c]+'" data-path="multipliers.'+c+'" oninput="dcpSetConfig(this)"></div>';
+    }).join('') + '</div>';
+
+  var effortRows = PTYPES.map(function(pt){
+    var e = state.effort[pt];
+    return '<tr>' +
+      '<td style="font-weight:600;">'+e.label+'</td>' +
+      '<td><input type="number" min="0" step="0.5" value="'+e.shefinSetup+'" data-path="effort.'+pt+'.shefinSetup" oninput="dcpSetConfig(this)"></td>' +
+      '<td><input type="number" min="0" step="0.5" value="'+e.shefinQaHandoff+'" data-path="effort.'+pt+'.shefinQaHandoff" oninput="dcpSetConfig(this)"></td>' +
+      '<td><input type="number" min="0" step="0.5" value="'+e.shefinSanity+'" data-path="effort.'+pt+'.shefinSanity" oninput="dcpSetConfig(this)"></td>' +
+      '<td><input type="number" min="0" step="0.5" value="'+e.shefinPublish+'" data-path="effort.'+pt+'.shefinPublish" oninput="dcpSetConfig(this)"></td>' +
+      '<td><input type="number" min="0" step="0.5" value="'+e.qa+'" data-path="effort.'+pt+'.qa" oninput="dcpSetConfig(this)"></td>' +
+      '<td><input type="number" min="0" step="0.5" value="'+e.qaTestCasePrep+'" data-path="effort.'+pt+'.qaTestCasePrep" oninput="dcpSetConfig(this)"></td>' +
+      '<td><input type="number" min="0" step="0.5" value="'+e.dev+'" data-path="effort.'+pt+'.dev" oninput="dcpSetConfig(this)"></td>' +
+      '<td><input type="number" min="0" step="0.1" value="'+e.pmCore+'" data-path="effort.'+pt+'.pmCore" oninput="dcpSetConfig(this)"></td>' +
+      '<td><input type="number" min="0" step="0.1" value="'+e.pmClientComm+'" data-path="effort.'+pt+'.pmClientComm" oninput="dcpSetConfig(this)"></td>' +
+      '<td><input type="number" min="0" step="0.1" value="'+e.royBase+'" data-path="effort.'+pt+'.royBase" oninput="dcpSetConfig(this)"></td>' +
+    '</tr>';
+  }).join('');
+
+  var delegationRows = DELEGATION_MATRIX.map(function(r){
+    return '<tr><td>'+r.activity+'</td><td style="font-weight:600;">'+r.primary+'</td><td>'+r.backup+'</td></tr>';
+  }).join('');
+
+  document.getElementById('config-body').innerHTML =
+    '<div class="subtle" style="margin-bottom:10px; font-weight:600;">Team size'+info('How many people are in each role today. This drives every available-capacity number in the dashboard.')+'</div>' + teamHtml +
+    '<div class="subtle" style="margin-bottom:10px; font-weight:600;">Client communication ownership'+info('Client communication is mostly Roy\'s responsibility by default. This percentage controls how much of the total client-comm workload (see the effort table below) stays with Deepika; the rest goes to Roy automatically.')+'</div>' + splitHtml +
+    '<div class="subtle" style="margin-bottom:10px; font-weight:600;">Capacity assumptions'+info('Controls how "available capacity" is calculated: headcount &times; working days/week &times; planning window (weeks) &times; usable capacity %. "Near-capacity at %" is also the healthy/amber threshold; over capacity starts at 100%.')+'</div>' + capacityHtml +
+    '<div class="subtle" style="margin-bottom:10px; font-weight:600;">Complexity multipliers'+info('Each project\'s complexity multiplies its effort for every role. Standard = 1.0 is the baseline; Simple reduces effort, Complex and Very Complex increase it.')+'</div>' + multHtml +
+    '<div class="subtle" style="margin-bottom:10px; font-weight:600;">Effort per project (days)'+info('The base effort (before the complexity multiplier) that one project of this type needs from each role. The Developer column is reference only &mdash; a project either ties up one dedicated developer (any value above 0) or needs none (0). "PM client comm" is the total client-communication workload for the project, split between Deepika and Roy using the percentage above.')+'</div>' +
+    '<table style="margin-bottom:20px;"><thead><tr>' +
+      '<th>Project type</th>' +
+      '<th>Ops setup'+info('Days Shefin spends on dashboard, theme, homepage and integration setup for one project of this type. Happens immediately at project start.')+'</th>' +
+      '<th>Ops QA handoff'+info('Days Shefin spends preparing/triggering the build and assigning it to QA. For P1 / Default this happens right after setup. For Web Parity and Custom App it happens later, once the Developer\'s build is ready &mdash; after a multi-week gap in which Shefin has no scheduled involvement in this project.')+'</th>' +
+      '<th>Ops sanity'+info('Days Shefin spends on sanity testing before Brand UAT. Only applies to P1 / Default &mdash; Deepika does this for Web Parity and Custom App instead.')+'</th>' +
+      '<th>Ops publish'+info('Days Shefin spends publishing one project of this type after Brand UAT approval.')+'</th>' +
+      '<th>QA testing'+info('Days QA spends testing, retesting and signing off one project of this type.')+'</th>' +
+      '<th>QA test cases'+info('Days QA spends writing project-specific test cases for Web Parity and Custom App. This happens in parallel with development, so it never extends the project timeline &mdash; but it still consumes QA capacity, so it is added on top of QA testing days.')+'</th>' +
+      '<th>Developer'+info('Reference only. Any value above 0 means the project ties up one dedicated developer; 0 means no developer is needed.')+'</th>' +
+      '<th>PM core'+info('Deepika\'s non-transferable execution work for one project of this type: handover, Data Clarity, requirement analysis, Source of Truth, coordinating Developers/QA/Ops, progress tracking, unblocking, QA review and issue assignment, and (for Web Parity and Custom App) final sanity testing before Brand UAT.')+'</th>' +
+      '<th>PM client comm'+info('Total client-communication work for one project of this type: status updates, meetings, follow-ups, UAT scheduling. Split between Deepika and Roy using the ownership percentage in Configuration (mostly Roy by default).')+'</th>' +
+      '<th>Roy own'+info('Roy\'s own baseline involvement in one project of this type: portfolio oversight, executive communication and escalation handling, before any transfer from Deepika.')+'</th>' +
+    '</tr></thead>' +
+    '<tbody>' + effortRows + '</tbody></table>' +
+    '<div class="subtle" style="margin-bottom:20px; font-size:12px; font-weight:600;">What\'s not counted per project'+info(EXCLUDED_INFO)+'</div>' +
+    '<div class="subtle" style="margin-bottom:10px; font-weight:600;">Delegation matrix (reference)'+info('Only activities where Roy is listed as backup owner are automatically transferable in this model &mdash; that is the "PM client comm" column above. Everything else always stays with its primary owner.')+'</div>' +
+    '<table><thead><tr><th>Activity</th><th>Primary owner</th><th>Backup owner</th></tr></thead><tbody>' + delegationRows + '</tbody></table>';
+}
+
+function showTip(infoEl){
+  var tip = infoEl.querySelector('.info-tip');
+  if (!tip) return;
+  tip.classList.remove('tip-below');
+  tip.classList.add('show');
+
+  var margin = 12;
+  var gap = 10;
+  var iconRect = infoEl.getBoundingClientRect();
+  var tipWidth = tip.offsetWidth;
+  var tipHeight = tip.offsetHeight;
+  var iconCenterX = iconRect.left + iconRect.width / 2;
+
+  var top = iconRect.top - tipHeight - gap;
+  var below = top < margin;
+  if (below){
+    top = iconRect.bottom + gap;
+    tip.classList.add('tip-below');
+  }
+
+  var maxLeft = window.innerWidth - margin - tipWidth;
+  var left = iconCenterX - tipWidth / 2;
+  left = Math.max(margin, Math.min(left, maxLeft));
+
+  var arrowLeft = iconCenterX - left;
+  arrowLeft = Math.max(12, Math.min(arrowLeft, tipWidth - 12));
+
+  tip.style.top = top + 'px';
+  tip.style.left = left + 'px';
+  tip.style.setProperty('--arrow-left', arrowLeft + 'px');
+}
+
+function hideTip(infoEl){
+  var tip = infoEl.querySelector('.info-tip');
+  if (tip) tip.classList.remove('show');
+}
+
+function initTooltips(){
+  var root = document.getElementById('dcp');
+  if (!root) return;
+  root.addEventListener('mouseover', function(e){
+    var infoEl = e.target.closest && e.target.closest('.info');
+    if (infoEl) showTip(infoEl);
+  });
+  root.addEventListener('mouseout', function(e){
+    var infoEl = e.target.closest && e.target.closest('.info');
+    if (infoEl && !infoEl.contains(e.relatedTarget)) hideTip(infoEl);
+  });
+  root.addEventListener('focusin', function(e){
+    var infoEl = e.target.closest && e.target.closest('.info');
+    if (infoEl) showTip(infoEl);
+  });
+  root.addEventListener('focusout', function(e){
+    var infoEl = e.target.closest && e.target.closest('.info');
+    if (infoEl && !infoEl.contains(e.relatedTarget)) hideTip(infoEl);
+  });
+}
+
+function initTabs(){
+  var tabBar = document.getElementById('ref-tabs');
+  if (!tabBar) return;
+  tabBar.addEventListener('click', function(e){
+    var btn = e.target.closest('.tab-btn');
+    if (!btn) return;
+    var tab = btn.dataset.tab;
+    tabBar.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.toggle('active', b === btn); });
+    document.querySelectorAll('#dcp .tab-panel').forEach(function(p){ p.style.display = (p.dataset.panel === tab) ? '' : 'none'; });
+  });
+}
+
+function update(){
+  renderTeamOverview();
+  renderHierarchy();
+  renderCalcMethodology();
+  var result = compute();
+  var roles = result.roles;
+  renderRequirementTable(roles);
+  renderDelegation(result.delegation);
+  var bottleneck = renderBottleneck(roles);
+  renderSnapshot(roles, bottleneck);
+  renderRecommendation(roles, bottleneck);
+}
+
+function init(){
+  var teamTitle = document.getElementById('team-overview-title');
+  if (teamTitle) teamTitle.innerHTML = 'Team overview' + info('The people available to work on delivery right now. Change headcount in Configuration if the team grows or shrinks.');
+  renderResponsibilities();
+  renderProjectInputs();
+  renderConfig();
+  initTabs();
+  initTooltips();
+  update();
+}
+
+init();
+
+})();
+</script>
+
+</div>
+</body>
+</html>
