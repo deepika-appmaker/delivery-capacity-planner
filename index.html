@@ -139,22 +139,19 @@
 
   <div class="dcp-body">
 
+    <div class="section card pad" style="background: var(--accent-bg); border-color: var(--border-strong);">
+      <div class="subtle" style="color: var(--text-1); font-weight:600; margin-bottom:4px;">Assumptions</div>
+      <div class="subtle">Everything on this page, including timelines, assumes sales handover, Data Clarity documentation and other required brand inputs are provided completely and on time. Delays or gaps in these upstream inputs are not modeled here and will affect actual delivery timelines.</div>
+    </div>
+
     <div class="section card pad">
-      <div class="section-title" id="mode-title" style="margin-bottom:10px;">Planning mode</div>
-      <div class="tab-bar" id="mode-tabs">
-        <button class="tab-btn mode-btn active" data-mode="scenario" type="button">Scenario based</button>
-        <button class="tab-btn mode-btn" data-mode="manual" type="button">Manual</button>
+      <div class="section-title" id="scenario-title" style="margin-bottom:10px;">Planning scenario</div>
+      <div class="tab-bar" id="scenario-tabs">
+        <button class="tab-btn scenario-btn" data-scenario="best" type="button">Best case</button>
+        <button class="tab-btn scenario-btn active" data-scenario="average" type="button">Average case</button>
+        <button class="tab-btn scenario-btn" data-scenario="worst" type="button">Worst case</button>
       </div>
-      <div class="subtle" id="mode-desc" style="margin-bottom:14px;"></div>
-      <div id="scenario-controls">
-        <div class="section-title" id="scenario-title" style="margin-bottom:10px;">Planning scenario</div>
-        <div class="tab-bar" id="scenario-tabs">
-          <button class="tab-btn scenario-btn" data-scenario="best" type="button">Best case</button>
-          <button class="tab-btn scenario-btn active" data-scenario="average" type="button">Average case</button>
-          <button class="tab-btn scenario-btn" data-scenario="worst" type="button">Worst case</button>
-        </div>
-        <div class="subtle" id="scenario-desc"></div>
-      </div>
+      <div class="subtle" id="scenario-desc"></div>
     </div>
 
     <div class="section">
@@ -234,13 +231,7 @@ var state = {
   healthyThreshold: 90,
   overloadThreshold: 100,
   clientCommDeepikaPct: 15,
-  planningMode: 'scenario',
   scenario: 'average',
-  manualProjects: {
-    p1: { count: 1, complexity: 'Standard' },
-    web: { count: 2, complexity: 'Standard' },
-    custom: { count: 1, complexity: 'Standard' }
-  },
   scenarioProjects: {
     best: {
       p1: { count: 1, complexity: 'Standard' },
@@ -261,7 +252,7 @@ var state = {
   effort: {
     p1:     { label: 'P1 / Default', shefinSetup: 3, shefinQaHandoff: 0.2, shefinSanity: 1, shefinPublish: 0.5, shefinDashboardTraining: 0.5, qa: 2,   qaTestCasePrep: 0,   dev: 0,    pmCore: 0.4, pmClientComm: 0.1, royBase: 0.2 },
     web:    { label: 'Web Parity',   shefinSetup: 3, shefinQaHandoff: 0.2, shefinSanity: 0, shefinPublish: 0.5, shefinDashboardTraining: 0.5, qa: 5,   qaTestCasePrep: 2.5, dev: 15,   pmCore: 3.5, pmClientComm: 1.5, royBase: 1.5 },
-    custom: { label: 'Custom App',   shefinSetup: 3, shefinQaHandoff: 0.2, shefinSanity: 0, shefinPublish: 0.5, shefinDashboardTraining: 0.5, qa: 10,  qaTestCasePrep: 2.5, dev: 25, pmCore: 5.5, pmClientComm: 2.5, royBase: 2.5 }
+    custom: { label: 'Custom App',   shefinSetup: 3, shefinQaHandoff: 0.2, shefinSanity: 0, shefinPublish: 0.5, shefinDashboardTraining: 0.5, qa: 10,  qaTestCasePrep: 2.5, dev: 25,   pmCore: 5.5, pmClientComm: 2.5, royBase: 2.5 }
   },
   multipliers: { Simple: 0.8, Standard: 1.0, Complex: 1.3, 'Very Complex': 1.6 }
 };
@@ -404,7 +395,7 @@ var COMPLEXITY_INFO = 'Complexity multiplies the effort every role needs on that
 var REQ_HEAD_INFO = {
   role: 'Developers are tracked as headcount. The APM, Delivery Manager, Ops and QA are tracked in working days. The APM and Delivery Manager already reflect any client-communication effort reassigned between them (see Calculation Methodology for details).',
   capacity: 'Total working days (or developer headcount, for Developers) available for this role in the current planning period, based on the assumptions in Configuration.',
-  required: 'Total effort needed from this role based on the currently active pipeline\'s project counts (the selected Scenario based case, or the Manual pipeline).',
+  required: 'Total effort needed from this role based on the selected planning scenario\'s project counts (see Incoming projects).',
   remaining: 'Capacity minus Required. A positive number is spare capacity; a negative number means the role is short by that many days (or developers).',
   status: 'Healthy: comfortable spare capacity. Near Capacity: little spare capacity left. Over Capacity: required effort exceeds available capacity.'
 };
@@ -430,11 +421,11 @@ function availableDays(headcount){
 }
 
 function activeProjects(){
-  return state.planningMode === 'manual' ? state.manualProjects : state.scenarioProjects[state.scenario];
+  return state.scenarioProjects[state.scenario];
 }
 
 function activeProjectsPath(){
-  return state.planningMode === 'manual' ? 'manualProjects' : ('scenarioProjects.' + state.scenario);
+  return 'scenarioProjects.' + state.scenario;
 }
 
 function compute(){
@@ -551,19 +542,23 @@ function classifyOverall(maxPct){
 }
 
 function renderTeamOverview(){
-  var cards = [
-    { key:'roy', icon:'DM', color:'var(--purple)', bg:'var(--purple-bg)', role:'Delivery Manager', count: state.team.roy },
-    { key:'deepika', icon:'APM', color:'var(--accent)', bg:'var(--accent-bg)', role:'Associate Project Manager', count: state.team.deepika },
-    { key:'shefin', icon:'OPS', color:'var(--amber)', bg:'var(--amber-bg)', role:'Operations Manager', count: state.team.shefin },
-    { key:'developers', icon:'DV', color:'var(--green)', bg:'var(--green-bg)', role:'Developers', count: state.team.developers },
-    { key:'qa', icon:'QA', color:'var(--red)', bg:'var(--red-bg)', role:'Quality assurance', count: state.team.qa }
-  ];
-  document.getElementById('team-overview').innerHTML = cards.map(function(c){
-    return '<div class="card team-card">' +
-      '<div class="badge-icon" style="background:'+c.bg+'; color:'+c.color+';">'+c.icon+'</div>' +
-      '<div><div class="kpi-value">'+c.count+'</div><div class="kpi-label">'+c.role+'</div></div>' +
+  function node(color, role, count){
+    return '<div class="h-node" style="border-left:3px solid '+color+';">' +
+      role + ' <span class="tag" style="background:'+color+'; color:#fff;">'+count+(count===1?' person':' people')+'</span>' +
     '</div>';
-  }).join('');
+  }
+  document.getElementById('team-overview').innerHTML =
+    '<div class="hierarchy">' +
+      node('var(--purple)', 'Delivery Manager', state.team.roy) +
+      '<div class="h-arrow">&#8595;</div>' +
+      node('var(--accent)', 'Associate Project Manager', state.team.deepika) +
+      '<div class="h-arrow">&#8595;</div>' +
+      '<div class="h-row">' +
+        node('var(--green)', 'Developers', state.team.developers) +
+        node('var(--red)', 'QA', state.team.qa) +
+        node('var(--amber)', 'Operations', state.team.shefin) +
+      '</div>' +
+    '</div>';
 }
 
 function renderHierarchy(){
@@ -635,10 +630,9 @@ function renderCalcMethodology(){
   html += '<div class="calc-block"><h4>7. Status, bottleneck and recommendation</h4>' +
     '<p>For every role, Remaining Capacity = Capacity &minus; Required. Internally, this is also expressed as a percentage of capacity consumed so the same thresholds apply consistently across roles with very different total capacities: below the "Near-capacity at %" threshold, status is Healthy (green); up to 100%, status is Near Capacity (amber); above 100%, status is Over Capacity (red) &mdash; both thresholds are editable in Configuration. The dashboard shows Remaining Capacity in days (or developers), not this internal percentage, since day-based figures are easier to act on directly. The role with the least spare capacity relative to its total is the primary bottleneck, and the next is the secondary bottleneck. The Recommendation panel is driven by the primary bottleneck\'s shortfall, and the "Add capacity" / "Stagger the intake" / "Extend the timeline" options update dynamically based on the current gap.</p></div>';
 
-  html += '<div class="calc-block"><h4>8. Planning mode: Scenario based vs. Manual</h4>' +
-    '<p>This application does not apply any load factor or scaling behind the scenes &mdash; every required-days figure is always calculated the same way: project count &times; complexity multiplier &times; effort per project. What changes between modes is which project counts are used.</p>' +
-    '<p>In <strong>Scenario based</strong> mode, <strong>Best case</strong>, <strong>Average case</strong> and <strong>Worst case</strong> are three separate, independently editable incoming-project pipelines &mdash; each with its own counts per project type (see Incoming projects). Best case defaults to a lighter pipeline, Average to a typical one, and Worst case to a heavier one, but all three are fully editable and are not derived from one another.</p>' +
-    '<p>In <strong>Manual</strong> mode, there is a single incoming-project pipeline that you edit directly, independent of the three scenario pipelines. Switching between Scenario based and Manual, or between the three scenario tabs, simply changes which pipeline\'s counts feed every calculation below.</p></div>';
+  html += '<div class="calc-block"><h4>8. Planning scenario: three independent pipelines</h4>' +
+    '<p>This application does not apply any load factor or scaling behind the scenes &mdash; every required-days figure is always calculated the same way: project count &times; complexity multiplier &times; effort per project. What changes between scenarios is which project counts are used.</p>' +
+    '<p><strong>Best case</strong>, <strong>Average case</strong> and <strong>Worst case</strong> are three separate, independently editable incoming-project pipelines &mdash; each with its own counts per project type (see Incoming projects). Best case defaults to a lighter pipeline, Average to a typical one, and Worst case to a heavier one, but all three are fully editable and are not derived from one another. Switching tabs simply changes which pipeline\'s counts feed every calculation below.</p></div>';
 
   document.getElementById('calc-methodology').innerHTML = html;
 }
@@ -663,7 +657,7 @@ function renderProjectInputs(){
   var contextEl = document.getElementById('incoming-projects-context');
   if (contextEl){
     var labelMap = { best: 'Best case pipeline', average: 'Average case pipeline', worst: 'Worst case pipeline' };
-    contextEl.textContent = 'Editing: ' + (state.planningMode === 'manual' ? 'Manual pipeline' : labelMap[state.scenario]);
+    contextEl.textContent = 'Editing: ' + labelMap[state.scenario];
   }
 }
 
@@ -934,21 +928,6 @@ function renderScenarioDesc(){
     '<div style="margin-top:8px;">Edit this pipeline\'s counts in Incoming projects below. Results are reflected in the Snapshot, Team Requirement, Bottleneck and Recommendation blocks further down.</div>';
 }
 
-function renderModeDesc(){
-  var modeDescEl = document.getElementById('mode-desc');
-  var controlsEl = document.getElementById('scenario-controls');
-  if (!modeDescEl || !controlsEl) return;
-  if (state.planningMode === 'manual'){
-    modeDescEl.textContent = 'Uses a single incoming-project pipeline that you edit directly in Incoming projects below.';
-    controlsEl.style.display = 'none';
-  } else {
-    modeDescEl.textContent = 'Best, Average and Worst case are three separate incoming-project pipelines, each with its own counts. Pick a tab to view or edit that pipeline.';
-    controlsEl.style.display = '';
-  }
-  renderProjectInputs();
-  renderScenarioDesc();
-}
-
 function initScenarioTabs(){
   var bar = document.getElementById('scenario-tabs');
   if (!bar) return;
@@ -959,19 +938,6 @@ function initScenarioTabs(){
     bar.querySelectorAll('.scenario-btn').forEach(function(b){ b.classList.toggle('active', b === btn); });
     renderProjectInputs();
     renderScenarioDesc();
-    update();
-  });
-}
-
-function initModeTabs(){
-  var bar = document.getElementById('mode-tabs');
-  if (!bar) return;
-  bar.addEventListener('click', function(e){
-    var btn = e.target.closest('.mode-btn');
-    if (!btn) return;
-    state.planningMode = btn.dataset.mode;
-    bar.querySelectorAll('.mode-btn').forEach(function(b){ b.classList.toggle('active', b === btn); });
-    renderModeDesc();
     update();
   });
 }
@@ -1002,20 +968,16 @@ function update(){
 }
 
 function init(){
-  var modeTitle = document.getElementById('mode-title');
-  if (modeTitle) modeTitle.innerHTML = 'Planning mode' + info('Scenario based gives you three separate, independently editable incoming-project pipelines &mdash; Best, Average and Worst case. Manual gives you a single pipeline that you edit directly. No load factor or scaling is applied in either mode &mdash; only the project counts differ.');
   var scenarioTitle = document.getElementById('scenario-title');
-  if (scenarioTitle) scenarioTitle.innerHTML = 'Planning scenario' + info('Switches between the three scenario pipelines. Each has its own project counts, editable in Incoming projects below.');
+  if (scenarioTitle) scenarioTitle.innerHTML = 'Planning scenario' + info('Switches between three independent incoming-project pipelines &mdash; Best, Average and Worst case. Each has its own project counts, editable in Incoming projects below. No load factor or scaling is applied &mdash; only the project counts differ.');
   var teamTitle = document.getElementById('team-overview-title');
   if (teamTitle) teamTitle.innerHTML = '<span>Team overview</span><span class="chevron">&#9660;</span>';
   renderResponsibilities();
   renderProjectInputs();
   renderConfig();
   renderScenarioDesc();
-  renderModeDesc();
   initTabs();
   initScenarioTabs();
-  initModeTabs();
   initTooltips();
   update();
 }
